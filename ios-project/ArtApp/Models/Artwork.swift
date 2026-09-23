@@ -18,6 +18,12 @@ struct Artwork: Decodable, Identifiable, Hashable {
     let thumbnail: Thumbnail?
 }
 
+extension Artwork {
+    var artistName: String {
+        artistDisplay?.components(separatedBy: "\n").first ?? "Unknown artist"
+    }
+}
+
 struct Thumbnail: Decodable, Hashable {
     let altText: String?
     let width: Int?
