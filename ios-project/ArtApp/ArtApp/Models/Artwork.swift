@@ -2,30 +2,38 @@ import Foundation
 
 struct ArtworkResponse: Decodable {
     let data: [Artwork]
-    let config: ApiConfig
-}
-
-struct ApiConfig: Decodable {
-    let iiifUrl: String
 }
 
 struct Artwork: Decodable, Identifiable, Hashable {
     let id: Int
     let title: String?
-    let artistDisplay: String?
-    let dateDisplay: String?
-    let imageId: String?
-    let thumbnail: Thumbnail?
+    let creationDate: String?
+    let creators: [Creator]?
+    let images: ArtworkImages?
+}
+
+struct Creator: Decodable, Hashable {
+    let description: String?
+}
+
+struct ArtworkImages: Decodable, Hashable {
+    let web: ImageAsset?
+}
+
+struct ImageAsset: Decodable, Hashable {
+    let url: String
 }
 
 extension Artwork {
     var artistName: String {
-        artistDisplay?.components(separatedBy: "\n").first ?? "Unknown artist"
+        guard let description = creators?.first?.description else {
+            return "Unknown artist"
+        }
+        return description.components(separatedBy: " (").first ?? description
     }
-}
 
-struct Thumbnail: Decodable, Hashable {
-    let altText: String?
-    let width: Int?
-    let heifht: Int?
+    var imageURL: URL? {
+        guard let urlString = images?.web?.url else { return nil }
+        return URL(string: urlString)
+    }
 }

@@ -7,8 +7,8 @@ struct ArtworkListView: View {
     @State private var errorMessage: String?
     
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
-    private var artworkWithImages: [Artwork] {
-        artworkRepository.artworks.filter { $0.imageId != nil}
+    private var artworksWithImages: [Artwork] {
+        artworkRepository.artworks.filter { $0.imageURL != nil }
     }
     
     var body: some View {
@@ -23,14 +23,13 @@ struct ArtworkListView: View {
                         Task { await loadArtworks() }
                     }
                     }
-                } else if isLoading && artworkWithImages.isEmpty {
+                } else if isLoading && artworksWithImages.isEmpty {
                     ProgressView("Loading artworks...")
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(artworkWithImages) { artwork in
-                                ArtworkCard(artwork: artwork, imageURL: artworkRepository.imageURL(for: artwork)
-                                )
+                            ForEach(artworksWithImages) { artwork in
+                                ArtworkCard(artwork: artwork)
                             }
                         }
                         .padding()

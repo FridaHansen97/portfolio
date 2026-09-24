@@ -1,8 +1,9 @@
 import Foundation
 
 struct ArtworkService {
-    private let baseURL = "https://api.artic.edu/api/v1/artworks/search"
-    private let fields = "id,title,artist_display,date_display,image_id,thumbnail"
+    private let baseURL = "https://openaccess-api.clevelandart.org/api/artworks/"
+    private let fields = "id,title,creation_date,creators,images"
+    private let pageSize = 20
 
     func searchArtworks(query: String, page: Int = 1) async throws -> ArtworkResponse {
         guard var components = URLComponents(string: baseURL) else {
@@ -11,8 +12,10 @@ struct ArtworkService {
 
         var queryItems = [
             URLQueryItem(name: "fields", value: fields),
-            URLQueryItem(name: "limit", value: "20"),
-            URLQueryItem(name: "page", value: String(page))
+            URLQueryItem(name: "has_image", value: "1"),
+            URLQueryItem(name: "cc0", value: nil),
+            URLQueryItem(name: "limit", value: String(pageSize)),
+            URLQueryItem(name: "skip", value: String((page - 1) * pageSize))
         ]
         if !query.isEmpty {
             queryItems.append(URLQueryItem(name: "q", value: query))
@@ -23,10 +26,7 @@ struct ArtworkService {
             throw URLError(.badURL)
         }
 
-        var request = URLRequest(url: url)
-        request.setValue("ArtApp (github.com/yourname)", forHTTPHeaderField: "AIC-User-Agent")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(from: url)
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200..<300).contains(httpResponse.statusCode) else {
