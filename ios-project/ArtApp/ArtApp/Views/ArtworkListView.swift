@@ -29,7 +29,10 @@ struct ArtworkListView: View {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 16) {
                             ForEach(artworksWithImages) { artwork in
-                                ArtworkCard(artwork: artwork)
+                                NavigationLink(value: artwork) {
+                                    ArtworkCard(artwork: artwork)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
@@ -37,6 +40,9 @@ struct ArtworkListView: View {
                 }
             }
                 .navigationTitle("Artworks")
+                .navigationDestination(for: Artwork.self) { artwork in
+                    Text(artwork.title ?? "Untitled")
+                }
                 .task {
                     guard artworkRepository.artworks.isEmpty else { return }
                     await loadArtworks()

@@ -10,6 +10,9 @@ struct Artwork: Decodable, Identifiable, Hashable {
     let creationDate: String?
     let creators: [Creator]?
     let images: ArtworkImages?
+    let technique: String?
+    let description: String?
+    let department: String?
 }
 
 struct Creator: Decodable, Hashable {
@@ -36,4 +39,30 @@ extension Artwork {
         guard let urlString = images?.web?.url else { return nil }
         return URL(string: urlString)
     }
+}
+
+// -- Sample data for previews
+
+extension Artwork {
+    static let sample = Artwork(
+        id: 160729,
+        title: "Baoyang Lake",
+        creationDate: "1500s",
+        creators: [Creator(description: "Song Xu (Chinese, 1525-c. 1606)")],
+        images: ArtworkImages(web: ImageAsset(url: "https://openaccess-cdn.clevelandart.org/1998.78.14/1998.78.14_web.jpg")),
+        technique: "album; ink and color on silk",
+        description: "This album of landscape paintings depicts famous scenic areas around the city of Wuxing in southeastern China.",
+        department: "Chinese Art"
+    )
+
+    static let empty = Artwork(
+        id: 1,
+        title: nil,
+        creationDate: nil,
+        creators: nil,
+        images: nil,
+        technique: nil,
+        description: nil,
+        department: nil
+    )
 }

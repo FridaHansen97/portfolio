@@ -2,7 +2,7 @@ import Foundation
 
 struct ArtworkService {
     private let baseURL = "https://openaccess-api.clevelandart.org/api/artworks/"
-    private let fields = "id,title,creation_date,creators,images"
+    private let fields = "id,title,creation_date,creators,images,technique,description,department"
     private let pageSize = 20
 
     func searchArtworks(query: String, page: Int = 1) async throws -> ArtworkResponse {
