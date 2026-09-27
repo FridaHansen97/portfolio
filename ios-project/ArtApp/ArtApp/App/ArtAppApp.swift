@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct ArtAppApp: App {
@@ -9,5 +10,6 @@ struct ArtAppApp: App {
             RootView()
                 .environment(\.artworkRepository, artworkRepository)
         }
+        .modelContainer(for: FavoriteArtwork.self)
     }
 }

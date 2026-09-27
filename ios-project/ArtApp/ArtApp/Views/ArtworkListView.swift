@@ -45,7 +45,7 @@ struct ArtworkListView: View {
         }
         .navigationTitle("Artworks")
         .navigationDestination(for: Artwork.self) { artwork in
-            Text(artwork.title ?? "Untitled")
+            ArtworkDetailView(artwork: artwork)
         }
         .searchable(text: $searchText, prompt: "Search artworks")
         .task(id: searchText) {

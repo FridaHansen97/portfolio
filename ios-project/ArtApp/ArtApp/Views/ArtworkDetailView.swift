@@ -1,8 +1,15 @@
-
 import SwiftUI
+import SwiftData
 
 struct ArtworkDetailView: View {
     let artwork: Artwork
+    
+    @Environment(\.modelContext) private var modelContext
+    @Query private var favorites: [FavoriteArtwork]
+    
+    private var favorite: FavoriteArtwork? {
+        favorites.first { $0.artworkId == artwork.id }
+    }
 
     var body: some View {
         ScrollView {
@@ -51,11 +58,32 @@ struct ArtworkDetailView: View {
         }
         .navigationTitle(artwork.title ?? "Artwork")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    toggleFavorite()
+                }label: {
+                    Image(systemName: favorite != nil ? "heart.fill" : "heart")
+                }
+                .accessibilityLabel(favorite != nil ? "Remove from favorites" : "Add to favorites")
+            }
+        }
+    }
+    
+    private func toggleFavorite() {
+        if let favorite {
+            modelContext.delete(favorite)
+        } else {
+            modelContext.insert(FavoriteArtwork(artwork: artwork))
+        }
     }
 }
+
+
 
 #Preview {
     NavigationStack {
         ArtworkDetailView(artwork: .sample)
     }
+    .modelContainer(for: FavoriteArtwork.self, inMemory: true)
 }
