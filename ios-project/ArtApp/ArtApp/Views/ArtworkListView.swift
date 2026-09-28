@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ArtworkListView: View {
     @Environment(\.artworkRepository) private var artworkRepository
@@ -37,6 +38,10 @@ struct ArtworkListView: View {
                                 ArtworkCard(artwork: artwork)
                             }
                             .buttonStyle(.plain)
+                            .overlay(alignment: .topTrailing) {
+                                FavoriteButton(artwork: artwork)
+                                    .padding(6)
+                            }
                         }
                     }
                     .padding()
@@ -80,4 +85,5 @@ struct ArtworkListView: View {
         ArtworkListView()
     }
     .environment(\.artworkRepository, ArtworkRepository())
+    .modelContainer(for: FavoriteArtwork.self, inMemory: true)
 }

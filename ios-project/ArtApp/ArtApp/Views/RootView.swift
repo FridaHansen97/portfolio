@@ -1,9 +1,19 @@
 import SwiftUI
+import SwiftData
 
 struct RootView: View {
     var body: some View {
-        NavigationStack {
-            ArtworkListView()
+        TabView {
+            Tab("Artworks", systemImage: "photo.on.rectangle") {
+                NavigationStack {
+                    ArtworkListView()
+                }
+            }
+            Tab("Favorites", systemImage: "heart") {
+                NavigationStack {
+                    FavoritesView()
+                }
+            }
         }
     }
 }
@@ -11,4 +21,5 @@ struct RootView: View {
 #Preview {
     RootView()
         .environment(\.artworkRepository, ArtworkRepository())
+        .modelContainer(for: FavoriteArtwork.self, inMemory: true)
 }

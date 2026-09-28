@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ArtworkCard: View {
     let artwork: Artwork
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Color.clear
@@ -23,12 +23,12 @@ struct ArtworkCard: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .accessibilityLabel(artwork.title ?? "Artwork")
-
+            
             Text(artwork.title ?? "Untitled")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .lineLimit(2)
-
+            
             Text(artwork.artistName)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
