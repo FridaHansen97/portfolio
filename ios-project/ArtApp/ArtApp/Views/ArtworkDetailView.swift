@@ -7,21 +7,9 @@ struct ArtworkDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AsyncImage(url: artwork.imageURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    case .failure:
-                        Image(systemName: "photo")
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                    default:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 200)
-                    }
-                }
-                .accessibilityLabel(artwork.title ?? "Artwork")
+                ArtworkImage(url: artwork.imageURL)
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .accessibilityLabel(artwork.title ?? "Artwork")
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(artwork.title ?? "Untitled")
@@ -56,7 +44,6 @@ struct ArtworkDetailView: View {
         }
     }
 }
-
 #Preview {
     NavigationStack {
         ArtworkDetailView(artwork: .sample)

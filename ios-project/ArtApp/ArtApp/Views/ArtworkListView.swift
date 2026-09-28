@@ -9,7 +9,6 @@ struct ArtworkListView: View {
     @State private var searchText = ""
     @State private var loadedQuery: String?
     
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
     private var artworksWithImages: [Artwork] {
         artworkRepository.artworks.filter { $0.imageURL != nil }
     }
@@ -31,28 +30,14 @@ struct ArtworkListView: View {
             }else if artworksWithImages.isEmpty && !searchText.isEmpty {
                 ContentUnavailableView.search(text: searchText)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(artworksWithImages) { artwork in
-                            NavigationLink(value: artwork) {
-                                ArtworkCard(artwork: artwork)
-                            }
-                            .buttonStyle(.plain)
-                            .overlay(alignment: .topTrailing) {
-                                FavoriteButton(artwork: artwork)
-                                    .padding(6)
-                            }
-                        }
-                    }
-                    .padding()
-                }
+                ArtworkGrid(artworks: artworksWithImages)
             }
         }
         .navigationTitle("Artworks")
         .navigationDestination(for: Artwork.self) { artwork in
             ArtworkDetailView(artwork: artwork)
         }
-        .searchable(text: $searchText, prompt: "Search artworks")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search artworks")
         .task(id: searchText) {
             guard searchText != loadedQuery else { return }
             

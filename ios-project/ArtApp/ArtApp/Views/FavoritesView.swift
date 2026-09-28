@@ -5,31 +5,13 @@ struct FavoritesView: View {
     @Query(sort: \FavoriteArtwork.dateAdded, order: .reverse)
     private var favorites: [FavoriteArtwork]
     
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
-    
     var body: some View {
         Group {
             if favorites.isEmpty {
                 ContentUnavailableView( "No Favorites Yet", systemImage: "heart", description: Text("Tap the heart on an artwork to save it here.")
                 )
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(favorites) { favorite in
-                            let artwork = favorite.artwork
-                            
-                            NavigationLink(value: artwork) {
-                                ArtworkCard(artwork: artwork)
-                            }
-                            .buttonStyle(.plain)
-                            .overlay(alignment: .topTrailing) {
-                                FavoriteButton(artwork: artwork)
-                                    .padding(6)
-                            }
-                        }
-                    }
-                    .padding()
-                }
+                ArtworkGrid(artworks: favorites.map(\.artwork))
             }
         }
         .navigationTitle("Favorites")
@@ -50,7 +32,7 @@ struct FavoritesView: View {
     .modelContainer(container)
 }
 
-#Preview("empty") {
+#Preview("Empty") {
     NavigationStack {
         FavoritesView()
     }

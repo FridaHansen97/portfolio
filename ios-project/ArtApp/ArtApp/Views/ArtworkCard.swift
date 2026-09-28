@@ -8,18 +8,7 @@ struct ArtworkCard: View {
             Color.clear
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
-                    AsyncImage(url: artwork.imageURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                        case .failure:
-                            Image(systemName: "photo")
-                        default:
-                            ProgressView()
-                        }
-                    }
+                    ArtworkImage(url: artwork.imageURL)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .accessibilityLabel(artwork.title ?? "Artwork")
