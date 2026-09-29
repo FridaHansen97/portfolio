@@ -19,6 +19,8 @@ final class FavoriteArtwork {
         creationDate = artwork.creationDate
         creatorDescription = artwork.creators?.first?.description
         imageURLString = artwork.images?.web?.url
+        technique = artwork.technique
+        artworkDescription = artwork.description
         department = artwork.department
         dateAdded = .now
     }

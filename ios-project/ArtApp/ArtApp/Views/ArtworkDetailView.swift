@@ -8,7 +8,7 @@ struct ArtworkDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 ArtworkImage(url: artwork.imageURL)
-                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .frame(maxWidth: .infinity, minHeight: 300, maxHeight: 500)
                     .accessibilityLabel(artwork.title ?? "Artwork")
                 
                 VStack(alignment: .leading, spacing: 4) {

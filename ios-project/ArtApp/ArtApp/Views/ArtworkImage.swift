@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ArtworkImage: View {
     let url: URL?
+    var contentMode: ContentMode = .fit
     
     @State private var image: UIImage?
     @State private var failed = false
@@ -11,13 +12,15 @@ struct ArtworkImage: View {
             if let image {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(contentMode: contentMode)
             } else if failed {
                 Image(systemName: "photo")
+                    .foregroundStyle(.secondary)
             } else {
                 ProgressView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: url) {
             await loadImage()
         }
