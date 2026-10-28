@@ -1,4 +1,3 @@
-// components/StatusBadge.tsx
 // Small colored pill with an icon showing the user's progress on a challenge.
 import { ProgressStatus } from "@/utils/challengeData";
 import { Circle, CircleCheck, Contrast, LucideIcon } from "lucide-react-native";

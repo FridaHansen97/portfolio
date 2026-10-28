@@ -1,13 +1,13 @@
 // components/ChallengeCard.tsx
-// One challenge in the overview list: title, short description, the
-// signed-in user's status, and a progress bar while it is in progress.
-// Pressing it calls onPress (navigation is decided by the screen, so the
-// card stays reusable).
+// One challenge in the overview list: status, title, short description,
+// progress while in progress, and a meta line (difficulty · category · author).
+// Pressing it calls onPress — navigation is decided by the screen, so the
+// card stays reusable.
 import ProgressBar from "@/components/ProgressBar";
 import StatusBadge from "@/components/StatusBadge";
 import { ChallengeData, ProgressStatus } from "@/utils/challengeData";
 import { TOTAL_STEPS } from "@/utils/challengeRules";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text } from "react-native";
 
 type ChallengeCardProps = {
   challenge: ChallengeData;
@@ -16,39 +16,61 @@ type ChallengeCardProps = {
   onPress?: () => void;
 };
 
+// "easy" → "Easy"
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export default function ChallengeCard({
   challenge,
   status,
   stepsDone,
   onPress,
 }: ChallengeCardProps) {
+  const isCompleted = status === "completed";
+  const isInProgress = status === "in_progress";
+
+  // Only include the parts that exist, then join with " · "
+  const meta = [
+    challenge.difficulty && capitalize(challenge.difficulty),
+    challenge.category,
+    `by ${challenge.authorName}`,
+    isInProgress && `${stepsDone} of ${TOTAL_STEPS} steps`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <Pressable
       onPress={onPress}
-      className="mb-3 gap-2 rounded-xl bg-white p-4 shadow-sm active:opacity-70"
+      // Completed challenges fade back so open ones stand out
+      className={`mb-3 gap-2 rounded-card p-4 active:opacity-70 ${
+        isCompleted ? "bg-surface/60" : "bg-surface"
+      }`}
     >
-      <View className="flex-row items-start justify-between gap-3">
-        <Text className="flex-1 text-lg font-bold">{challenge.title}</Text>
-        <StatusBadge status={status} />
-      </View>
+      <StatusBadge status={status} />
 
-      {/* numberOfLines keeps cards the same height even with long descriptions */}
-      <Text className="text-gray-600" numberOfLines={2}>
-        {challenge.description}
+      <Text
+        className={`font-display text-xl ${isCompleted ? "text-muted" : "text-ink"}`}
+      >
+        {challenge.title}
       </Text>
 
-      {/* Only in progress: not started is always 0 and completed is always 100 */}
-      {status === "in_progress" && (
-        <ProgressBar
-          completed={stepsDone}
-          total={TOTAL_STEPS}
-          label="requirements"
-        />
+      {/* Completed cards skip the description to keep the list compact */}
+      {!isCompleted && (
+        <Text
+          className="font-body text-[15px] leading-5 text-muted"
+          numberOfLines={2}
+        >
+          {challenge.description}
+        </Text>
       )}
 
-      <Text className="text-xs text-gray-400">
-        By {challenge.authorName} · radius {challenge.radiusMeters} m
-      </Text>
+      {isInProgress && (
+        <ProgressBar completed={stepsDone} total={TOTAL_STEPS} />
+      )}
+
+      <Text className="font-body text-xs text-muted">{meta}</Text>
     </Pressable>
   );
 }

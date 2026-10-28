@@ -25,10 +25,14 @@ export default function ProtectedLayout() {
     <Stack>
       {/* The tab bar has its own headers, so hide the Stack header for it */}
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      {/* Screens pushed on top of the tabs get a back button automatically */}
+      {/* Details draws its own round back button, so the Stack header is hidden.
+          title is still used for the browser tab and the next screen's back label. */}
       <Stack.Screen
         name="challenge/[id]"
-        options={{ title: "Challenge", headerBackTitle: "Back" }}
+        options={{
+          headerShown: false,
+          title: "Challenge",
+        }}
       />
       <Stack.Screen
         name="resolve/[id]"

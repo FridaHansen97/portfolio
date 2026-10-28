@@ -43,22 +43,33 @@ export function countDoneSteps(
     .length;
 }
 
-// Same count, but from what is SAVED in Firestore — used by the list and
-// details screens, which only know the stored progress document
+// Step status from what is SAVED in Firestore — used by the list and details
+// screens, which only know the stored progress document, not the live screen
+export function getSavedStepStatus(
+  progress: ChallengeProgress | null | undefined,
+  expectedAnswer: string,
+) {
+  if (progress?.status === "completed") {
+    return { location: true, photo: true, answer: true };
+  }
+  return getStepStatus(
+    {
+      locationVerified: progress?.locationVerified ?? false,
+      photoUris: progress?.photoUrls ?? [],
+      answer: progress?.answer ?? "",
+    },
+    expectedAnswer,
+  );
+}
+
+// How many saved steps are done (0–3)
 export function countSavedSteps(
   progress: ChallengeProgress | null | undefined,
   expectedAnswer: string,
 ): number {
-  if (!progress) return 0;
-  if (progress.status === "completed") return TOTAL_STEPS;
-  return countDoneSteps(
-    {
-      locationVerified: progress.locationVerified,
-      photoUris: progress.photoUrls ?? [],
-      answer: progress.answer ?? "",
-    },
-    expectedAnswer,
-  );
+  return Object.values(getSavedStepStatus(progress, expectedAnswer)).filter(
+    Boolean,
+  ).length;
 }
 
 // Returns a list of requirements that are NOT yet fulfilled.
