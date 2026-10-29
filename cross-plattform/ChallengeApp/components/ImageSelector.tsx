@@ -1,365 +1,388 @@
+// Photo grid for evidence: shows the chosen photos as tiles plus an "Add" tile.
+//  - Add      → choose between the camera and the photo library
+//  - Tap tile → select it, then rotate, crop to square or remove it
+// Photos that are already uploaded (https URLs from an earlier save) can only
+// be removed: editing them would need a download first, which fails on web (CORS).
+import { isUploaded } from "@/api/imageApi";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Device from "expo-device";
-import * as ImageManipulator from "expo-image-manipulator";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useMediaLibraryPermissions } from "expo-image-picker";
-import { useRef, useState } from "react";
+import {
+  Camera,
+  Crop,
+  Images,
+  Plus,
+  RotateCw,
+  SwitchCamera,
+  Trash,
+  X,
+} from "lucide-react-native";
+import { ReactNode, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   Image,
   Modal,
   Platform,
-  ScrollView,
-  StyleSheet,
+  Pressable,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ImageSelectorProps = {
   images: string[];
   onChange: (images: string[]) => void;
+  disabled?: boolean;
 };
+
+// Same quality for every edited or captured photo: small enough to upload fast
+const SAVE_OPTIONS = { compress: 0.85, format: SaveFormat.JPEG };
+
+// iOS Simulator / Android emulator have no real camera. On web Device.isDevice is
+// always true, and the browser camera works, so only native simulators are excluded.
+const IS_SIMULATOR = Platform.OS !== "web" && !Device.isDevice;
 
 export default function ImageSelector({
   images,
   onChange,
+  disabled = false,
 }: ImageSelectorProps) {
-  const [processing, setProcessing] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [choosingSource, setChoosingSource] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [cameraVisible, setCameraVisible] = useState(false);
   const [facing, setFacing] = useState<"back" | "front">("back");
-
   const cameraRef = useRef<CameraView | null>(null);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [mediaLibraryPermission, requestMediaLibraryPermission] =
-    useMediaLibraryPermissions();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  const isSimulator =
-    (Platform.OS === "ios" && !Device.isDevice) ||
-    (Platform.OS === "android" && !Device.isDevice);
+  const selectedUri =
+    selectedIndex !== null ? images[selectedIndex] : undefined;
 
-  function openCamera() {
-    setCameraVisible(true);
+  // ---------- Adding photos ----------
+
+  async function pickFromLibrary() {
+    setError(null);
+    setChoosingSource(false);
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError(
+          "Photo access was denied. Allow it in your device settings to choose photos.",
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+      if (!result.canceled) {
+        onChange([...images, ...result.assets.map((asset) => asset.uri)]);
+      }
+    } catch {
+      setError("Could not open the photo library.");
+    }
   }
 
-  function closeCamera() {
-    setCameraVisible(false);
-  }
-
-  async function pickFromGallery() {
-    if (!mediaLibraryPermission?.granted) {
-      const result = await requestMediaLibraryPermission();
-      if (!result.granted) {
+  async function openCamera() {
+    setError(null);
+    setChoosingSource(false);
+    if (!IS_SIMULATOR && !cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+      if (!permission.granted) {
+        setError(
+          "Camera access was denied. Allow it in your device settings to take photos.",
+        );
         return;
       }
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      onChange([...images, ...result.assets.map((a) => a.uri)]);
-    }
+    setCameraVisible(true);
   }
 
-  async function captureImage() {
-    const photo = await cameraRef.current?.takePictureAsync({
-      quality: 0.85,
-    });
-
-    if (photo?.uri) {
-      onChange([...images, photo.uri]);
-      closeCamera();
-    }
-  }
-
-  async function rotateImage(index: number) {
-    setProcessing(index);
-
+  async function capturePhoto() {
     try {
-      const result = await ImageManipulator.manipulateAsync(
-        images[index],
-        [{ rotate: 90 }],
-        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
+      const photo = await cameraRef.current?.takePictureAsync({
+        quality: 0.85,
+      });
+      if (photo?.uri) {
+        onChange([...images, photo.uri]);
+        setCameraVisible(false);
+      }
+    } catch {
+      setError(
+        "Could not take the photo. Try again or choose one from the library.",
       );
-
-      const updated = [...images];
-      updated[index] = result.uri;
-      onChange(updated);
-    } finally {
-      setProcessing(null);
+      setCameraVisible(false);
     }
   }
 
-  async function cropToSquare(index: number) {
-    setProcessing(index);
+  // ---------- Editing the selected photo ----------
 
+  // Shared by rotate and crop: runs the edit, swaps in the new file, handles errors once
+  async function editSelected(edit: (uri: string) => Promise<string>) {
+    if (selectedIndex === null || !selectedUri) return;
+    setError(null);
+    setProcessing(true);
     try {
-      const info = await ImageManipulator.manipulateAsync(images[index], []);
-
-      const { width, height } = info;
-      const size = Math.min(width, height);
-
-      const result = await ImageManipulator.manipulateAsync(
-        images[index],
-        [
-          {
-            crop: {
-              originX: (width - size) / 2,
-              originY: (height - size) / 2,
-              width: size,
-              height: size,
-            },
-          },
-        ],
-        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
-      );
-
+      const newUri = await edit(selectedUri);
       const updated = [...images];
-      updated[index] = result.uri;
+      updated[selectedIndex] = newUri;
       onChange(updated);
+    } catch {
+      setError("Could not edit the photo.");
     } finally {
-      setProcessing(null);
+      setProcessing(false);
     }
   }
 
-  function removeImage(index: number) {
-    onChange(images.filter((_, i) => i !== index));
+  async function rotate(uri: string): Promise<string> {
+    const image = await ImageManipulator.manipulate(uri)
+      .rotate(90)
+      .renderAsync();
+    const result = await image.saveAsync(SAVE_OPTIONS);
+    return result.uri;
   }
 
-  function renderCameraContent() {
-    if (!permission && !isSimulator) {
-      return <View style={styles.cameraContainer} />;
-    }
-
-    if (!isSimulator && permission && !permission.granted) {
-      return (
-        <View style={styles.cameraContainer}>
-          <Text style={styles.permissionText}>
-            We need your permission to show the camera
-          </Text>
-
-          <Button onPress={requestPermission} title="Grant permission" />
-
-          <TouchableOpacity style={styles.closeBtn} onPress={closeCamera}>
-            <Text style={styles.closeBtnText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.cameraContainer}>
-        {!isSimulator ? (
-          <CameraView
-            ref={(r) => {
-              cameraRef.current = r;
-            }}
-            style={StyleSheet.absoluteFill}
-            facing={facing}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.simPanel]}>
-            <Text style={styles.simText}>Simulator — use Gallery instead</Text>
-          </View>
-        )}
-
-        <View style={styles.cameraControls}>
-          <TouchableOpacity style={styles.cameraBtn} onPress={closeCamera}>
-            <Text style={styles.cameraBtnText}>✕</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.shutter, isSimulator && styles.buttonDisabled]}
-            disabled={isSimulator}
-            onPress={captureImage}
-          >
-            <View style={styles.shutterInner} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.cameraBtn, isSimulator && styles.buttonDisabled]}
-            disabled={isSimulator}
-            onPress={() =>
-              setFacing((current) => (current === "back" ? "front" : "back"))
-            }
-          >
-            <Text style={styles.cameraBtnText}>⟳</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  // Crops the largest centered square out of the photo
+  async function cropToSquare(uri: string): Promise<string> {
+    const original = await ImageManipulator.manipulate(uri).renderAsync();
+    const size = Math.min(original.width, original.height);
+    const image = await ImageManipulator.manipulate(uri)
+      .crop({
+        originX: (original.width - size) / 2,
+        originY: (original.height - size) / 2,
+        width: size,
+        height: size,
+      })
+      .renderAsync();
+    const result = await image.saveAsync(SAVE_OPTIONS);
+    return result.uri;
   }
+
+  function removeSelected() {
+    if (selectedIndex === null) return;
+    onChange(images.filter((_, i) => i !== selectedIndex));
+    setSelectedIndex(null);
+  }
+
+  // ---------- UI ----------
 
   return (
-    <View>
-      <View style={styles.pickerRow}>
-        <TouchableOpacity style={styles.pickerButton} onPress={pickFromGallery}>
-          <Text style={styles.pickerText}>🖼 Gallery</Text>
-        </TouchableOpacity>
+    <View className="gap-3">
+      <View className="flex-row flex-wrap gap-2">
+        {images.map((uri, index) => (
+          <Pressable
+            key={`${index}-${uri.slice(-24)}`}
+            onPress={() =>
+              setSelectedIndex(index === selectedIndex ? null : index)
+            }
+            disabled={disabled}
+            className={`aspect-square w-[31%] overflow-hidden rounded-input bg-line ${
+              index === selectedIndex ? "border-[3px] border-ink" : ""
+            }`}
+            accessibilityRole="button"
+            accessibilityLabel={`Photo ${index + 1}`}
+          >
+            <Image
+              source={{ uri }}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+            {processing && index === selectedIndex && (
+              <View className="absolute inset-0 items-center justify-center bg-ink/40">
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+            )}
+          </Pressable>
+        ))}
 
-        <TouchableOpacity style={styles.pickerButton} onPress={openCamera}>
-          <Text style={styles.pickerText}>📷 Camera</Text>
-        </TouchableOpacity>
+        {/* "Add" tile — dashed outline so it reads as an empty slot */}
+        <Pressable
+          onPress={() => setChoosingSource((open) => !open)}
+          disabled={disabled}
+          className="aspect-square w-[31%] items-center justify-center gap-1 rounded-input border-2 border-dashed border-line bg-paper active:opacity-70"
+          accessibilityRole="button"
+          accessibilityLabel="Add photo"
+        >
+          {images.length === 0 ? (
+            <Camera size={22} color="#17181A" />
+          ) : (
+            <Plus size={22} color="#17181A" />
+          )}
+          <Text className="font-body-semibold text-xs text-ink">Add</Text>
+        </Pressable>
       </View>
 
-      {images.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-        >
-          {images.map((uri, index) => {
-            const busy = processing === index;
-
-            return (
-              <View
-                key={`img-${index}-${uri.slice(-20)}`}
-                style={styles.thumbContainer}
-              >
-                <Image
-                  source={{ uri }}
-                  style={styles.thumb}
-                  resizeMode="cover"
-                />
-
-                {busy && (
-                  <View style={styles.busyOverlay}>
-                    <ActivityIndicator color="white" />
-                  </View>
-                )}
-
-                <View style={styles.actionBar}>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => rotateImage(index)}
-                    disabled={busy}
-                  >
-                    <Text style={styles.actionText}>↻</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => cropToSquare(index)}
-                    disabled={busy}
-                  >
-                    <Text style={styles.actionText}>✂</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.actionBtn, styles.removeBtn]}
-                    onPress={() => removeImage(index)}
-                    disabled={busy}
-                  >
-                    <Text style={styles.actionText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </ScrollView>
+      {/* Where should the new photo come from? */}
+      {choosingSource && (
+        <View className="flex-row gap-2">
+          <SourceButton
+            icon={<Camera size={18} color="#17181A" />}
+            label="Take photo"
+            onPress={openCamera}
+          />
+          <SourceButton
+            icon={<Images size={18} color="#17181A" />}
+            label="Library"
+            onPress={pickFromLibrary}
+          />
+        </View>
       )}
 
-      <Modal visible={cameraVisible} animationType="slide">
-        {renderCameraContent()}
+      {/* Actions for the selected photo */}
+      {selectedUri && (
+        <View className="flex-row gap-2">
+          {!isUploaded(selectedUri) && (
+            <>
+              <SourceButton
+                icon={<RotateCw size={18} color="#17181A" />}
+                label="Rotate"
+                onPress={() => editSelected(rotate)}
+                disabled={processing}
+              />
+              <SourceButton
+                icon={<Crop size={18} color="#17181A" />}
+                label="Square"
+                onPress={() => editSelected(cropToSquare)}
+                disabled={processing}
+              />
+            </>
+          )}
+          <SourceButton
+            icon={<Trash size={18} color="#7A2508" />}
+            label="Remove"
+            onPress={removeSelected}
+            disabled={processing}
+            danger
+          />
+        </View>
+      )}
+
+      {error && (
+        <Text className="font-body text-sm text-danger-ink">{error}</Text>
+      )}
+      {images.length > 0 && !selectedUri && (
+        <Text className="font-body text-sm text-muted">
+          Tap a photo to rotate, crop or remove it.
+        </Text>
+      )}
+
+      {/* Full-screen camera */}
+      <Modal
+        visible={cameraVisible}
+        animationType="slide"
+        onRequestClose={() => setCameraVisible(false)}
+      >
+        <View className="flex-1 bg-black">
+          {IS_SIMULATOR ? (
+            <View className="flex-1 items-center justify-center p-6">
+              <Text className="text-center font-body-semibold text-base text-white">
+                The simulator has no camera — use Library instead.
+              </Text>
+            </View>
+          ) : (
+            <CameraView ref={cameraRef} style={{ flex: 1 }} facing={facing} />
+          )}
+
+          <SafeAreaView
+            edges={["bottom"]}
+            className="absolute bottom-0 left-0 right-0"
+          >
+            <View className="flex-row items-center justify-between px-10 py-6">
+              <CameraButton
+                onPress={() => setCameraVisible(false)}
+                label="Close camera"
+              >
+                <X size={24} color="#FFFFFF" />
+              </CameraButton>
+
+              {/* Shutter */}
+              <Pressable
+                onPress={capturePhoto}
+                disabled={IS_SIMULATOR}
+                className={`h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white ${
+                  IS_SIMULATOR ? "opacity-40" : ""
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel="Take photo"
+              >
+                <View className="h-[58px] w-[58px] rounded-full bg-white" />
+              </Pressable>
+
+              <CameraButton
+                onPress={() =>
+                  setFacing((f) => (f === "back" ? "front" : "back"))
+                }
+                label="Switch camera"
+                disabled={IS_SIMULATOR}
+              >
+                <SwitchCamera size={24} color="#FFFFFF" />
+              </CameraButton>
+            </View>
+          </SafeAreaView>
+        </View>
       </Modal>
     </View>
   );
 }
 
-const THUMB = 120;
+// Outlined button with icon + label, used for source choice and photo actions
+function SourceButton({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+  danger = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-button border bg-surface active:opacity-70 ${
+        danger ? "border-danger-ink/30" : "border-line"
+      } ${disabled ? "opacity-50" : ""}`}
+    >
+      {icon}
+      <Text
+        className={`font-body-semibold text-sm ${danger ? "text-danger-ink" : "text-ink"}`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
-const styles = StyleSheet.create({
-  pickerRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  pickerButton: {
-    flex: 1,
-    backgroundColor: "#f2f2f7",
-    borderRadius: 10,
-    padding: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  pickerText: { fontSize: 14, fontWeight: "600", color: "#333" },
-  listContent: { paddingVertical: 4 },
-  thumbContainer: {
-    width: THUMB,
-    marginRight: 10,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: "#e0e0e0",
-  },
-  thumb: { width: THUMB, height: THUMB },
-  busyOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    height: THUMB,
-  },
-  actionBar: { flexDirection: "row", backgroundColor: "rgba(0,0,0,0.55)" },
-  actionBtn: { flex: 1, paddingVertical: 5, alignItems: "center" },
-  removeBtn: { backgroundColor: "rgba(255,59,48,0.7)" },
-  actionText: { color: "white", fontSize: 14, fontWeight: "bold" },
-
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: "black",
-    justifyContent: "center",
-  },
-  permissionText: {
-    color: "white",
-    textAlign: "center",
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  closeBtn: { marginTop: 20, alignItems: "center" },
-  closeBtnText: { color: "#aaa", fontSize: 16 },
-  simPanel: {
-    backgroundColor: "#111",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  simText: { color: "white", fontSize: 16, fontWeight: "600" },
-  cameraControls: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 40,
-    paddingVertical: 40,
-  },
-  cameraBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cameraBtnText: { color: "white", fontSize: 20, fontWeight: "bold" },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  shutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "white",
-  },
-  buttonDisabled: { opacity: 0.4 },
-});
+// Round translucent button on top of the camera preview
+function CameraButton({
+  onPress,
+  label,
+  disabled = false,
+  children,
+}: {
+  onPress: () => void;
+  label: string;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      className={`h-12 w-12 items-center justify-center rounded-full bg-white/20 ${disabled ? "opacity-40" : ""}`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {children}
+    </Pressable>
+  );
+}

@@ -18,8 +18,8 @@ module.exports = {
         status: {
           todo: "#E6E3DA",
           "todo-ink": "#3A3D42",
-          active: "#DCE6FA",
-          "active-ink": "#1E3A8A",
+          active: "#EAF5EE",
+          "active-ink": "#1B5135",
           done: "#D6ECDD",
           "done-ink": "#1B5135",
         },

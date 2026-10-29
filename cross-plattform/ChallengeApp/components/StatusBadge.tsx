@@ -25,7 +25,7 @@ const STATUS_STYLES: Record<
   in_progress: {
     label: "In progress",
     icon: Contrast,
-    iconColor: "#1E3A8A",
+    iconColor: "#1B5135",
     container: "bg-status-active",
     text: "text-status-active-ink",
   },

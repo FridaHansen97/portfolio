@@ -5,14 +5,15 @@ import { getStatus } from "@/api/progressApi";
 import StatusBadge from "@/components/StatusBadge";
 import { ChallengeData, ChallengeProgress } from "@/utils/challengeData";
 import {
-    countSavedSteps,
-    getSavedStepStatus,
-    TOTAL_STEPS,
+  countSavedSteps,
+  getSavedStepStatus,
+  TOTAL_STEPS,
 } from "@/utils/challengeRules";
-import { Check, ChevronLeft } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import { ReactNode } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import BackButton from "./BackButton";
 
 type ChallengeDetailsViewProps = {
   challenge: ChallengeData;
@@ -50,14 +51,9 @@ export default function ChallengeDetailsView({
         contentContainerClassName="gap-4 px-5 pb-6"
       >
         {/* Round back button — the map will sit behind it later */}
-        <Pressable
-          onPress={onBack}
-          className="mt-2 h-11 w-11 items-center justify-center rounded-full bg-surface active:opacity-70"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <ChevronLeft size={22} color="#17181A" />
-        </Pressable>
+        <View className="mt-2">
+          <BackButton onPress={onBack} />
+        </View>
 
         {/* Status + tags */}
         <View className="flex-row flex-wrap gap-2">
