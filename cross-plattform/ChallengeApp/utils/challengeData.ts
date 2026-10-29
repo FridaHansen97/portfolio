@@ -20,6 +20,7 @@ export interface ChallengeData extends NewChallengeData {
   authorId: string;
   authorName: string; // shown in the UI without an extra lookup
   createdAt?: Timestamp;
+  updatedAt?: Timestamp; // set when the author edits the challenge
 }
 
 // "not_started" is never stored — it means "no progress document exists"

@@ -40,6 +40,10 @@ export default function ProtectedLayout() {
         name="createChallenge"
         options={{ headerShown: false, title: "New challenge" }}
       />
+      <Stack.Screen
+        name="editChallenge/[id]"
+        options={{ headerShown: false, title: "Edit challenge" }}
+      />
     </Stack>
   );
 }

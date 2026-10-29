@@ -9,32 +9,26 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "no.fridahansen.challegeresolver",
+      "bundleIdentifier": "no.fridahansen.challengeresolver",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "899523437795-m301g3nks1u5rgt841es4c9svaf8d575.apps.googleusercontent.com"
+              "com.googleusercontent.apps.899523437795-m301g3nks1u5rgt841es4c9svaf8d575"
             ]
           }
         ]
       }
     },
     "android": {
+      "package": "no.fridahansen.challengeresolver",
       "adaptiveIcon": {
-        "package": "no.fridahansen.challengeresolver",
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.CAMERA"
-      ],
-      "package": "no.fridahansen.challegeresolver"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "server",
@@ -53,13 +47,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "ChallengeResolver uses your location to check that you are at the challenge."
+          "locationWhenInUsePermission": "ChallengeResolver uses your location to check that you are at the challenge.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "ChallengeResolver uses the camera to take photo proof for challenges. ",
+          "cameraPermission": "ChallengeResolver uses the camera to take photo proof for challenges.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -67,8 +63,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ChallengeResolver lets you choose photos as proof for the challenges.",
-          "cameraPermission": "ChallengeResolver uses camera to take photo proof for challenges.",
+          "photosPermission": "ChallengeResolver lets you choose photos as proof for challenges.",
+          "cameraPermission": "ChallengeResolver uses the camera to take photo proof for challenges.",
           "microphonePermission": false
         }
       ]

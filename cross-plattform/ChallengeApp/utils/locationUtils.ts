@@ -31,6 +31,32 @@ export class LocationPermissionDeniedError extends Error {
   }
 }
 
+// GPS is allowed but no position could be found (location services off,
+// no signal, or it took too long)
+export class LocationUnavailableError extends Error {
+  constructor(
+    message = "Your position could not be found. Check that location services are turned on for this app or browser.",
+  ) {
+    super(message);
+    this.name = "LocationUnavailableError";
+  }
+}
+
+// The browser rejects with a GeolocationPositionError ({ code, message }), which
+// is NOT an Error instance, while iOS/Android reject with a normal Error.
+// Both are turned into one of our own errors with a message the user understands.
+// Browser codes: 1 = permission denied, 2 = position unavailable, 3 = timeout.
+function toLocationError(error: unknown): Error {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 1) return new LocationPermissionDeniedError();
+  if (code === 3) {
+    return new LocationUnavailableError(
+      "Finding your position took too long. Please try again.",
+    );
+  }
+  return new LocationUnavailableError();
+}
+
 export class InvalidCoordinatesError extends Error {
   constructor() {
     super("Enter a valid latitude (-90 to 90) and longitude (-180 to 180).");
@@ -80,7 +106,21 @@ export async function getCurrentLocation(): Promise<ResolvedLocation> {
     throw new LocationPermissionDeniedError();
   }
 
-  const position = await Location.getCurrentPositionAsync({});
+  let position: Location.LocationObject;
+  try {
+    position = await Location.getCurrentPositionAsync({});
+  } catch (error) {
+    // Log code + message explicitly: the browser's error object keeps them on
+    // its prototype, so logging the object itself just prints "{}".
+    // console.warn (not error) so Expo doesn't show a full-screen red error
+    // for something the UI already explains to the user.
+    const { code, message } = (error ?? {}) as {
+      code?: unknown;
+      message?: unknown;
+    };
+    console.warn("getCurrentPositionAsync failed:", { code, message });
+    throw toLocationError(error);
+  }
   const { latitude, longitude } = position.coords;
   const address = await reverseGeocode(latitude, longitude);
 

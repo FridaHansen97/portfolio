@@ -2,6 +2,7 @@
 // Kept separate from the screen (which loads data and navigates) so the layout
 // can be reused and previewed without Firebase.
 import { getStatus } from "@/api/progressApi";
+import BackButton from "@/components/BackButton";
 import StatusBadge from "@/components/StatusBadge";
 import { ChallengeData, ChallengeProgress } from "@/utils/challengeData";
 import {
@@ -9,17 +10,28 @@ import {
   getSavedStepStatus,
   TOTAL_STEPS,
 } from "@/utils/challengeRules";
-import { Check } from "lucide-react-native";
-import { ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Check, Pencil, Trash } from "lucide-react-native";
+import { ReactNode, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import BackButton from "./BackButton";
 
 type ChallengeDetailsViewProps = {
   challenge: ChallengeData;
   progress: ChallengeProgress | null;
   onBack: () => void;
   onStart: () => void;
+  // Only the author gets edit/delete
+  isOwner: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+  deleteError?: string | null;
 };
 
 // "easy" → "Easy"
@@ -32,7 +44,16 @@ export default function ChallengeDetailsView({
   progress,
   onBack,
   onStart,
+  isOwner,
+  onEdit,
+  onDelete,
+  isDeleting,
+  deleteError,
 }: ChallengeDetailsViewProps) {
+  // Deleting can't be undone, so the first tap only asks for confirmation.
+  // Shown on the screen instead of Alert.alert, which does nothing on web.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   const status = getStatus(progress);
   const steps = getSavedStepStatus(progress, challenge.answer);
   const stepsDone = countSavedSteps(progress, challenge.answer);
@@ -50,10 +71,67 @@ export default function ChallengeDetailsView({
         className="flex-1"
         contentContainerClassName="gap-4 px-5 pb-6"
       >
-        {/* Round back button — the map will sit behind it later */}
-        <View className="mt-2">
+        {/* Round buttons on top: back, plus edit/delete for the author.
+            The map will sit behind them later. */}
+        <View className="mt-2 flex-row items-center justify-between">
           <BackButton onPress={onBack} />
+          {isOwner && (
+            <View className="flex-row gap-2">
+              <RoundIconButton label="Edit challenge" onPress={onEdit}>
+                <Pencil size={18} color="#17181A" />
+              </RoundIconButton>
+              <RoundIconButton
+                label="Delete challenge"
+                onPress={() => setConfirmingDelete(true)}
+              >
+                <Trash size={18} color="#7A2508" />
+              </RoundIconButton>
+            </View>
+          )}
         </View>
+
+        {confirmingDelete && (
+          <View
+            className="gap-3 rounded-card bg-danger p-4"
+            accessibilityRole="alert"
+          >
+            <Text className="font-body-semibold text-base text-danger-ink">
+              Delete this challenge?
+            </Text>
+            <Text className="font-body text-sm text-danger-ink">
+              It will be removed for everyone. This can't be undone.
+            </Text>
+            {deleteError && (
+              <Text className="font-body text-sm text-danger-ink">
+                {deleteError}
+              </Text>
+            )}
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => setConfirmingDelete(false)}
+                disabled={isDeleting}
+                className="h-11 flex-1 items-center justify-center rounded-button border border-danger-ink/30 bg-surface active:opacity-70"
+              >
+                <Text className="font-body-semibold text-sm text-ink">
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={onDelete}
+                disabled={isDeleting}
+                className="h-11 flex-1 items-center justify-center rounded-button bg-danger-ink active:opacity-80"
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text className="font-body-semibold text-sm text-surface">
+                    Delete
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Status + tags */}
         <View className="flex-row flex-wrap gap-2">
@@ -79,7 +157,7 @@ export default function ChallengeDetailsView({
             {challenge.description}
           </Text>
           <Text className="font-body text-sm text-muted">
-            Created by {challenge.authorName}
+            Created by {isOwner ? "you" : challenge.authorName}
           </Text>
         </View>
 
@@ -137,6 +215,29 @@ export default function ChallengeDetailsView({
         </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+// Round button in the same style as BackButton, for edit and delete
+function RoundIconButton({
+  label,
+  onPress,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="h-11 w-11 items-center justify-center rounded-full bg-surface active:opacity-70"
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+    >
+      {children}
+    </Pressable>
   );
 }
 

@@ -1,10 +1,14 @@
-// Challenge details (requirement 2). This screen only loads the data and
-// handles loading/error/not-found; ChallengeDetailsView draws the content.
+// Challenge details (requirement 2). This screen loads the data, handles
+// loading/error/not-found and deleting; ChallengeDetailsView draws the content.
+import { deleteChallenge } from "@/api/challengeApi";
 import ChallengeDetailsView from "@/components/ChallengeDetailsView";
+import { useAuth } from "@/context/AuthContext";
 import {
+  queryKeys,
   useChallengeQuery,
   useMyProgressQuery,
 } from "@/hooks/useChallengeQueries";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
@@ -12,8 +16,23 @@ export default function ChallengeDetailsScreen() {
   // The [id] part of the URL, e.g. /challenge/JNC6Zz800O75dIWi5UNF
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const challengeQuery = useChallengeQuery(id);
   const progressQuery = useMyProgressQuery(id);
+
+  // Declared before the early returns below: hooks must run in the same order
+  // on every render
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteChallenge(id),
+    onSuccess: () => {
+      // Drop the deleted challenge from the cache and refetch the list
+      queryClient.removeQueries({ queryKey: queryKeys.challenge(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.challenges });
+      // replace: going back should not return to a challenge that is gone
+      router.replace("/");
+    },
+  });
 
   if (challengeQuery.isLoading || progressQuery.isLoading) {
     return (
@@ -66,6 +85,16 @@ export default function ChallengeDetailsScreen() {
       onStart={() =>
         router.push({ pathname: "/resolve/[id]", params: { id: challenge.id } })
       }
+      isOwner={challenge.authorId === user?.uid}
+      onEdit={() =>
+        router.push({
+          pathname: "/editChallenge/[id]",
+          params: { id: challenge.id },
+        })
+      }
+      onDelete={() => deleteMutation.mutate()}
+      isDeleting={deleteMutation.isPending}
+      deleteError={deleteMutation.error?.message}
     />
   );
 }

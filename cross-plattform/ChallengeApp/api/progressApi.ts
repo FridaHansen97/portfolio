@@ -18,14 +18,13 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// Returns the signed-in user's uid, or throws — every progress call needs one
+//Returns the signed-in users uid, or throws. every progress call needs one.
 function requireUid(): string {
   const user = auth.currentUser;
   if (!user) throw new Error("You must be signed in.");
   return user.uid;
 }
 
-// Path helpers so the paths are written in exactly one place
 function progressCollection(uid: string) {
   return collection(db, "users", uid, "progress");
 }
@@ -34,23 +33,20 @@ function progressDoc(uid: string, challengeId: string) {
   return doc(progressCollection(uid), challengeId);
 }
 
-// ---------- Reads ----------
-
-// All of the user's progress in one query, keyed by challengeId.
-// The overview uses this to show a status badge on every challenge
-// without one request per challenge.
+//              Reads
+//All the users progress in one query. The overview uses this to show a status badge on every challenge.
 export async function getMyProgressMap(): Promise<
   Record<string, ChallengeProgress>
 > {
   const snapshot = await getDocs(progressCollection(requireUid()));
   const map: Record<string, ChallengeProgress> = {};
   snapshot.docs.forEach((d) => {
-    map[d.id] = d.data() as ChallengeProgress; // doc id === challengeId
+    map[d.id] = d.data() as ChallengeProgress;
   });
   return map;
 }
 
-// Progress for one challenge, or null if the user has never started it
+//Progress for one challenge, or nyll if the user never has started it.
 export async function getMyProgress(
   challengeId: string,
 ): Promise<ChallengeProgress | null> {
@@ -58,18 +54,15 @@ export async function getMyProgress(
   return snap.exists() ? (snap.data() as ChallengeProgress) : null;
 }
 
-// "Not started" is never stored — no document means the user hasn't begun
+//Not started is never stored. no document means the yser has not started.
 export function getStatus(
   progress: ChallengeProgress | null | undefined,
 ): ProgressStatus {
   return progress?.status ?? "not_started";
 }
 
-// ---------- Writes ----------
-
-// Marks the challenge as "in progress" once the user has verified their location.
-// merge: true only updates these fields and keeps anything already stored
-// (e.g. photos saved earlier).
+//            Writes
+//Marks the challenge as "in progress" as soon as the user has verified their location.
 export async function markInProgress(
   challengeId: string,
   usedMockLocation: boolean,
@@ -86,10 +79,8 @@ export async function markInProgress(
   );
 }
 
-// Saves an unfinished attempt ("Save progress" button) so the user can
-// continue later, and so the list can show how far they have come.
-// Returns the photo URLs so the screen can swap its local URIs for them
-// and not upload the same photos again on the next save.
+//Saves an unfinished attempt so the user can continue later and so the list can show how far they have gotten.
+
 export async function saveProgressDraft(
   challengeId: string,
   attempt: ResolveAttempt,
@@ -113,18 +104,13 @@ export async function saveProgressDraft(
   return photoUrls;
 }
 
-// Completes the challenge: checks the rules again, uploads any new photos to
-// Storage, then saves the result. Photos are uploaded first so we never
-// store a "completed" status without its evidence.
+//Completes the challenge: checks rules again, uploads new photos and saves.
 export async function completeChallenge(
   challenge: ChallengeData,
   attempt: ResolveAttempt,
   usedMockLocation: boolean,
 ): Promise<void> {
   const uid = requireUid();
-
-  // Same rules as the screen. If someone bypasses the disabled button,
-  // the save still refuses.
   const missing = getMissingRequirements(attempt, challenge.answer);
   if (missing.length > 0) {
     throw new Error(missing.join("\n"));

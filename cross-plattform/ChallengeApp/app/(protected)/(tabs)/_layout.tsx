@@ -28,6 +28,8 @@ export default function TabsLayout() {
         name="profilePage"
         options={{
           title: "Profile",
+          // The profile draws its own header (avatar + name)
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon icon={User} color={color} />,
         }}
       />
